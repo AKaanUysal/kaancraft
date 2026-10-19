@@ -2,7 +2,7 @@
 
 > **Live Demo:** [Play KaanCraft Here!](https://kaancraft.netlify.app) 🎮
 
-Hi there! 👋 I'm Kaan, a young self-taught software developer from Istanbul. This is my open-source passion project: **KaanCraft**. It is a fully functional 3D voxel survival game running entirely in the browser using a single HTML file and Three.js!
+Hi there! 👋 I'm Kaan, a young self-taught software developer from Turkey. This is my open-source passion project: **KaanCraft**. It is a fully functional 3D voxel survival game running entirely in the browser using a single HTML file and Three.js!
 
 I love exploring Linux, networking, and game mechanics, and I built this project to challenge myself and learn more about 3D programming, procedural generation, and open-source culture.
 
