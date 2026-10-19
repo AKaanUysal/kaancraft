@@ -454,7 +454,7 @@
         <h2>Envanter & Bloklar (Seçili Hotbar Slotuna Almak İçin Tıkla)</h2>
         <div id="inv-grid"></div>
         <p style="font-size:11px; color:#9ca3af; margin-top:10px;">
-          İpucu: Yeni eklenen <b>Elmas Cevheri, Obsidyen, Kitaplık, Altın Cevheri ve TNT</b> bloklarına tıklayarak alt bara (Hotbar) alabilirsin! Menüyü kapatmak için <b>E</b> tuşuna bas.
+          İpucu: <b>Elmas Kılıç</b>, <b>Elmas Cevheri, Obsidyen, Kitaplık, Altın Cevheri ve TNT</b> dahil tüm eşyaları tıklayarak alt bara (Hotbar) alabilirsin! Menüyü kapatmak için <b>E</b> tuşuna bas.
         </p>
       </div>
       <div class="inv-section">
@@ -468,12 +468,12 @@
   <div id="overlay">
     <div class="menu-box">
       <h1>KAANCRAFT</h1>
-      <p>Sonsuz Chunk Dünyası • %80 Akışkan Su & Kum Fiziği • Ambient Müzik • Yeni Cevherler</p>
+      <p>Sonsuz Chunk Dünyası • Elmas Kılıç & 3D Viewmodel • %80 Akışkan Su • Ambient Müzik</p>
       <div class="controls-list">
         <div><b>W, A, S, D:</b> Hareket &nbsp;|&nbsp; <b>Shift:</b> Koşma &nbsp;|&nbsp; <b>Space:</b> Zıplama / Yüzme</div>
-        <div><b>Sol Tık (Basılı Tut):</b> Blok Kırma (Çatlak + 3D Drop İtemi)</div>
+        <div><b>Sol Tık (Tıkla / Basılı Tut):</b> Kılıç Savurma & Blok Kırma</div>
         <div><b>Sağ Tık:</b> Blok Koyma / Elma Yeme &nbsp;|&nbsp; <b>1 - 9 / Scroll:</b> Hotbar Seçimi</div>
-        <div><b>E Tuşu:</b> Envanter & Crafting (Elmas, Obsidyen, Kitaplık, Altın, TNT)</div>
+        <div><b>E Tuşu:</b> Envanter & Crafting (1 Çubuk + 2 Elmas Cevheri = Elmas Kılıç)</div>
         <div><b>M Tuşu:</b> Ambient Arka Plan Müziği Aç / Kapat</div>
         <div><b>G Tuşu:</b> Hayatta Kalma / Yaratıcı (Uçma: F) Modu &nbsp;|&nbsp; <b>T Tuşu:</b> Gündüz/Gece</div>
       </div>
@@ -557,7 +557,6 @@
         this.pinkBuffer = null;
         this.musicEnabled = false;
         this.musicTimer = null;
-        // Pentatonik Ambient Gamı (C4, D4, E4, G4, A4, C5, D5, E5, G5)
         this.pentatonicFreqs = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99];
       }
       init() {
@@ -625,10 +624,9 @@
         } catch (e) {}
       }
 
-      // 3. MADDE: BLOK TÜRLERİNE GÖRE AYRILMIŞ DİNAMİK ADIM VE ZEMİN SESLERİ
+      // Blok Türlerine Göre Ayrılmış Dinamik Adım Sesleri
       playFootstep(surface = 'grass') {
         if (surface === 'grass' || surface === 'dirt') {
-          // Çimen / Toprak: Boğuk ve tok ses (Low-pass filter)
           this.playNoiseBurst({
             pink: true,
             filterType: 'lowpass',
@@ -639,7 +637,6 @@
             gainVal: 0.36
           });
         } else if (surface === 'stone' || surface === 'ore') {
-          // Taş / Cevher: Sert ve keskin tıkırtı (High-pass filter ve kısa decay)
           this.playNoiseBurst({
             pink: false,
             filterType: 'highpass',
@@ -650,7 +647,6 @@
             gainVal: 0.28
           });
         } else if (surface === 'sand') {
-          // Kum: Hışırtılı ses (White noise)
           this.playNoiseBurst({
             pink: false,
             filterType: 'bandpass',
@@ -661,7 +657,6 @@
             gainVal: 0.24
           });
         } else if (surface === 'water') {
-          // Su: Yumuşak su şıpırtısı
           this.playNoiseBurst({
             pink: true,
             filterType: 'bandpass',
@@ -672,7 +667,6 @@
             gainVal: 0.30
           });
         } else {
-          // Odun / Kitaplık vb.
           this.playNoiseBurst({
             pink: true,
             filterType: 'lowpass',
@@ -683,6 +677,19 @@
             gainVal: 0.32
           });
         }
+      }
+
+      // Kılıç / Eşya Savurma (Swing Whoosh) Sesi
+      playSwordSwing() {
+        this.playNoiseBurst({
+          pink: false,
+          filterType: 'bandpass',
+          freqStart: 950,
+          freqEnd: 240,
+          q: 2.2,
+          duration: 0.11,
+          gainVal: 0.26
+        });
       }
 
       playHit(surface = 'stone') {
@@ -722,7 +729,7 @@
         this.playNoiseBurst({ pink: true, filterType: 'bandpass', freqStart: 600, freqEnd: 1500, q: 5.0, duration: 0.065, gainVal: 0.4 });
       }
 
-      // 4. MADDE: PROSEDÜREL AMBIENT ARKA PLAN MÜZİĞİ (PENTATONİK PİYANO/PAD)
+      // Prosedürel Ambient Arka Plan Müziği
       playAmbientNote(freq, delay = 0, duration = 3.8) {
         try {
           if (!this.ctx || !this.musicEnabled) return;
@@ -733,7 +740,7 @@
           osc1.type = 'sine';
           osc2.type = 'triangle';
           osc1.frequency.setValueAtTime(freq, now);
-          osc2.frequency.setValueAtTime(freq * 0.5, now); // Bir oktav alt sıcak bas eşliği
+          osc2.frequency.setValueAtTime(freq * 0.5, now);
 
           const filter = this.ctx.createBiquadFilter();
           filter.type = 'lowpass';
@@ -762,7 +769,6 @@
         const f1 = this.pentatonicFreqs[Math.floor(Math.random() * this.pentatonicFreqs.length)];
         this.playAmbientNote(f1, 0, 4.2);
 
-        // %65 ihtimalle yumuşak bir akor / ikinci arpej notası ekle
         if (Math.random() < 0.65) {
           const f2 = this.pentatonicFreqs[Math.floor(Math.random() * this.pentatonicFreqs.length)];
           this.playAmbientNote(f2, 0.85 + Math.random() * 0.6, 3.8);
@@ -793,7 +799,7 @@
     const sfx = new RealisticSoundEngine();
 
     // ============================================================================
-    // 3. 32x32 HD PIXEL ART TEXTURE ATLAS + 5 YENİ BLOK DOKUSU VE AKAN SU DOKUSU
+    // 3. 32x32 HD PIXEL ART TEXTURE ATLAS + ELMAS KILIÇ DOKUSU
     // ============================================================================
     const TILE_SIZE = 32;
     const ATLAS_COLS = 16;
@@ -944,14 +950,9 @@
       ctx.fillRect(21, 21, 5, 2); ctx.fillRect(24, 18, 2, 5);
     }, false);
 
-    // Tile 10: Su (UV Scrolling için ayrıca bağımsız RepeatWrapping dokusu oluşturulur)
+    // Tile 10: Su
     tileIcons.water = drawTile(10, ctx => {
-      fillHDNoise(ctx, [
-        '#1876eb',
-        '#2284fa',
-        '#1464cc',
-        '#2d93ff'
-      ]);
+      fillHDNoise(ctx, ['#1876eb', '#2284fa', '#1464cc', '#2d93ff']);
       ctx.fillStyle = '#96d7ff';
       ctx.fillRect(3, 6, 10, 2);
       ctx.fillRect(16, 14, 11, 2);
@@ -997,10 +998,7 @@
       ctx.fillRect(14, 9, 4, 4);
     }, false);
 
-    // ----------------------------------------------------------------------------
-    // 5. MADDE: YEPYENİ 5 BLOK VE CEVHER DOKUSU (CANVAS PIXEL ART)
-    // ----------------------------------------------------------------------------
-    // 1) Tile 15: Elmas Cevheri (Diamond Ore - Gri taş üzerinde parlayan açık mavi pikseller)
+    // Tile 15: Elmas Cevheri (Diamond Ore)
     tileIcons.diamondOre = drawTile(15, ctx => {
       ctx.drawImage(tileIcons.stone, 0, 0);
       const spots = [[6,7],[8,6],[7,8],[20,8],[22,9],[21,7],[10,20],[12,21],[11,19],[22,22],[24,21],[15,13],[16,14]];
@@ -1014,7 +1012,7 @@
       });
     });
 
-    // 2) Tile 16: Obsidyen (Obsidian - Koyu mor ve siyah karışımı sert kaya dokusu)
+    // Tile 16: Obsidyen
     tileIcons.obsidian = drawTile(16, ctx => {
       fillHDNoise(ctx, ['#0f071e', '#1a0b2e', '#120924', '#2b124c', '#090414', '#3b1c63']);
       ctx.fillStyle = '#581c87';
@@ -1023,11 +1021,10 @@
       }
     });
 
-    // 3) Tile 17: Kitaplık Yan (Bookshelf - Alt/üst tahta, ortada renkli kitap rafları)
+    // Tile 17: Kitaplık
     tileIcons.bookshelf = drawTile(17, ctx => {
       ctx.drawImage(tileIcons.planks, 0, 0);
       const bookColors = ['#dc2626', '#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#e11d48'];
-      // İki raf boşluğu
       for (const shelfY of [4, 18]) {
         ctx.fillStyle = '#26170a';
         ctx.fillRect(2, shelfY, 28, 10);
@@ -1045,7 +1042,7 @@
       }
     });
 
-    // 4) Tile 18: Altın Cevheri (Gold Ore - Gri taş üzerinde parlayan sarı/altın pikseller)
+    // Tile 18: Altın Cevheri
     tileIcons.goldOre = drawTile(18, ctx => {
       ctx.drawImage(tileIcons.stone, 0, 0);
       const spots = [[7,6],[9,7],[19,8],[21,9],[8,21],[10,22],[21,20],[23,22],[14,14],[16,13]];
@@ -1059,39 +1056,32 @@
       });
     });
 
-    // 5) Tile 19, 20, 21: TNT (Kırmızı-beyaz şeritli ve üzerinde net 'TNT' yazılı doku)
+    // Tile 19, 20, 21: TNT
     tileIcons.tntSide = drawTile(19, ctx => {
-      // Kırmızı dinamit çubukları
       for (let x = 0; x < 32; x++) {
         ctx.fillStyle = (Math.floor(x / 4) % 2 === 0) ? '#dc2626' : '#b91c1c';
         ctx.fillRect(x, 0, 1, 32);
       }
-      // Ortadaki beyaz şerit
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 10, 32, 12);
       ctx.fillStyle = '#cbd5e1';
       ctx.fillRect(0, 10, 32, 1);
       ctx.fillRect(0, 21, 32, 1);
 
-      // Piksel 'TNT' Harfleri (Siyah)
       ctx.fillStyle = '#0f172a';
-      // 'T' (sol)
       ctx.fillRect(4, 12, 6, 2);
       ctx.fillRect(6, 12, 2, 8);
-      // 'N' (orta)
       ctx.fillRect(12, 12, 2, 8);
       ctx.fillRect(14, 13, 1, 2);
       ctx.fillRect(15, 15, 1, 2);
       ctx.fillRect(16, 17, 1, 2);
       ctx.fillRect(17, 12, 2, 8);
-      // 'T' (sağ)
       ctx.fillRect(21, 12, 6, 2);
       ctx.fillRect(23, 12, 2, 8);
     });
 
     tileIcons.tntTop = drawTile(20, ctx => {
       fillHDNoise(ctx, ['#dc2626', '#b91c1c', '#991b1b']);
-      // Merkezdeki barut fitili
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(12, 12, 8, 8);
       ctx.fillStyle = '#f8fafc';
@@ -1102,11 +1092,12 @@
       fillHDNoise(ctx, ['#991b1b', '#7f1d1d', '#b91c1c']);
     });
 
-    // Envanter Araç ve Yiyecek İkonları
+    // Envanter Araç, Yiyecek ve ELMAS KILIÇ İkonları (HTML5 Canvas Pixel Art)
     function createToolIcon(type) {
       const c = document.createElement('canvas');
       c.width = 32; c.height = 32;
       const ctx = c.getContext('2d');
+
       if (type === 'stick') {
         for (let i = 6; i < 26; i++) {
           ctx.fillStyle = i % 2 === 0 ? '#8c6230' : '#a87943';
@@ -1129,6 +1120,55 @@
         ctx.fillRect(10, 12, 4, 4);
         ctx.fillStyle = '#4ade80';
         ctx.fillRect(15, 5, 4, 5);
+      } else if (type === 'diamond_sword') {
+        // 1. MADDE: ÇAPRAZ (DIAGONAL) ELMAS KILIÇ PIXEL ART ÇİZİMİ
+        // Sol alt topuz (Pommel)
+        ctx.fillStyle = '#0e7490';
+        ctx.fillRect(2, 26, 4, 4);
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(3, 27, 2, 2);
+
+        // Kahverengi Kabza (Grip)
+        for (let i = 0; i < 6; i++) {
+          const gx = 5 + i;
+          const gy = 24 - i;
+          ctx.fillStyle = '#4a2c11';
+          ctx.fillRect(gx - 1, gy - 1, 4, 4);
+          ctx.fillStyle = i % 2 === 0 ? '#8c5a2b' : '#a66d38';
+          ctx.fillRect(gx, gy, 2, 2);
+        }
+
+        // Turkuaz Çapraz Siperlik (Crossguard)
+        for (let g = -4; g <= 4; g++) {
+          const cx = 11 + g;
+          const cy = 19 + g;
+          ctx.fillStyle = '#0891b2';
+          ctx.fillRect(cx - 1, cy - 1, 4, 4);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(cx, cy, 2, 2);
+        }
+
+        // Parlayan Turkuaz / Açık Mavi Kılıç Namlu Ucu (Diagonal Blade)
+        for (let b = 0; b < 15; b++) {
+          const bx = 13 + b;
+          const by = 17 - b;
+          // Koyu turkuaz keskin dış kenar
+          ctx.fillStyle = '#0369a1';
+          ctx.fillRect(bx - 2, by - 2, 5, 5);
+          // Ana elmas turkuaz gövde
+          ctx.fillStyle = '#06b6d4';
+          ctx.fillRect(bx - 1, by - 1, 4, 4);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(bx - 1, by - 1, 3, 3);
+          // Orta parlama çizgisi
+          ctx.fillStyle = '#e0f2fe';
+          ctx.fillRect(bx, by, 2, 2);
+        }
+        // Sivri Kılıç Ucu (Tip)
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(27, 2, 3, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(28, 3, 2, 2);
       }
       return c;
     }
@@ -1137,6 +1177,7 @@
     tileIcons.woodPick = createToolIcon('wood_pick');
     tileIcons.stonePick = createToolIcon('stone_pick');
     tileIcons.apple = createToolIcon('apple');
+    tileIcons.diamondSword = createToolIcon('diamond_sword');
 
     const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
     atlasTexture.magFilter = THREE.NearestFilter;
@@ -1144,7 +1185,6 @@
     atlasTexture.generateMipmaps = false;
     atlasTexture.needsUpdate = true;
 
-    // 1. MADDE: SU İÇİN BAĞIMSIZ REPEATWRAPPING (UV SCROLLING) DOKUSU
     const waterTexture = new THREE.CanvasTexture(tileIcons.water);
     waterTexture.magFilter = THREE.NearestFilter;
     waterTexture.minFilter = THREE.NearestFilter;
@@ -1183,43 +1223,44 @@
     }
 
     // ============================================================================
-    // 4. BLOK VE İTEM TANIMLARI (MEVCUT BLOKLAR KORUNDU + 5 YENİ BLOK EKLENDİ)
+    // 4. BLOK VE İTEM TANIMLARI (TÜM ESKİ EŞYALAR KORUNDU + ELMAS KILIÇ EKLENDİ)
     // ============================================================================
     const ITEMS = {
-      1:  { id: 1,  name: 'Çimen',          isBlock: true,  solid: true,  transparent: false, hardness: 0.65, tiles: { top: 0, bottom: 1, side: 2 },   icon: tileIcons.grassSide,  sound: 'grass' },
-      2:  { id: 2,  name: 'Toprak',         isBlock: true,  solid: true,  transparent: false, hardness: 0.55, tiles: { top: 1, bottom: 1, side: 1 },   icon: tileIcons.dirt,       sound: 'dirt' },
-      3:  { id: 3,  name: 'Taş',            isBlock: true,  solid: true,  transparent: false, hardness: 2.20, tiles: { top: 3, bottom: 3, side: 3 },   icon: tileIcons.stone,      sound: 'stone', needsPick: true },
-      4:  { id: 4,  name: 'Meşe Odunu',     isBlock: true,  solid: true,  transparent: false, hardness: 1.35, tiles: { top: 5, bottom: 5, side: 4 },   icon: tileIcons.woodSide,   sound: 'wood' },
-      5:  { id: 5,  name: 'Yaprak',         isBlock: true,  solid: true,  transparent: false, hardness: 0.30, tiles: { top: 6, bottom: 6, side: 6 },   icon: tileIcons.leaves,     sound: 'grass' },
-      6:  { id: 6,  name: 'Kum',            isBlock: true,  solid: true,  transparent: false, hardness: 0.50, tiles: { top: 7, bottom: 7, side: 7 },   icon: tileIcons.sand,       sound: 'sand', gravity: true },
-      7:  { id: 7,  name: 'Tuğla',          isBlock: true,  solid: true,  transparent: false, hardness: 2.00, tiles: { top: 8, bottom: 8, side: 8 },   icon: tileIcons.brick,      sound: 'stone', needsPick: true },
-      8:  { id: 8,  name: 'Cam',            isBlock: true,  solid: true,  transparent: true,  hardness: 0.45, tiles: { top: 9, bottom: 9, side: 9 },   icon: tileIcons.glass,      sound: 'stone' },
-      9:  { id: 9,  name: 'Su Kovası',      isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,     sound: 'water', isWater: true, waterLevel: 4 },
-      10: { id: 10, name: 'Akışkan Su 3',   isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,     sound: 'water', isWater: true, waterLevel: 3 },
-      11: { id: 11, name: 'Akışkan Su 2',   isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,     sound: 'water', isWater: true, waterLevel: 2 },
-      12: { id: 12, name: 'Akışkan Su 1',   isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,     sound: 'water', isWater: true, waterLevel: 1 },
-      13: { id: 13, name: 'Meşe Tahtası',   isBlock: true,  solid: true,  transparent: false, hardness: 1.20, tiles: { top: 11, bottom: 11, side: 11 }, icon: tileIcons.planks,    sound: 'wood' },
-      14: { id: 14, name: 'Karlı Blok',     isBlock: true,  solid: true,  transparent: false, hardness: 0.60, tiles: { top: 12, bottom: 3, side: 12 },  icon: tileIcons.snow,      sound: 'sand' },
-      15: { id: 15, name: 'Işık Taşı',      isBlock: true,  solid: true,  transparent: false, hardness: 0.80, tiles: { top: 13, bottom: 13, side: 13 }, icon: tileIcons.glowstone, sound: 'stone' },
-      16: { id: 16, name: 'Dağ Çiçeği',     isBlock: true,  solid: false, transparent: true,  hardness: 0.10, tiles: { top: 14, bottom: 14, side: 14 }, icon: tileIcons.flower,    sound: 'grass' },
+      1:  { id: 1,  name: 'Çimen',          isBlock: true,  solid: true,  transparent: false, hardness: 0.65, tiles: { top: 0, bottom: 1, side: 2 },   icon: tileIcons.grassSide,    sound: 'grass' },
+      2:  { id: 2,  name: 'Toprak',         isBlock: true,  solid: true,  transparent: false, hardness: 0.55, tiles: { top: 1, bottom: 1, side: 1 },   icon: tileIcons.dirt,         sound: 'dirt' },
+      3:  { id: 3,  name: 'Taş',            isBlock: true,  solid: true,  transparent: false, hardness: 2.20, tiles: { top: 3, bottom: 3, side: 3 },   icon: tileIcons.stone,        sound: 'stone', needsPick: true },
+      4:  { id: 4,  name: 'Meşe Odunu',     isBlock: true,  solid: true,  transparent: false, hardness: 1.35, tiles: { top: 5, bottom: 5, side: 4 },   icon: tileIcons.woodSide,     sound: 'wood' },
+      5:  { id: 5,  name: 'Yaprak',         isBlock: true,  solid: true,  transparent: false, hardness: 0.30, tiles: { top: 6, bottom: 6, side: 6 },   icon: tileIcons.leaves,       sound: 'grass' },
+      6:  { id: 6,  name: 'Kum',            isBlock: true,  solid: true,  transparent: false, hardness: 0.50, tiles: { top: 7, bottom: 7, side: 7 },   icon: tileIcons.sand,         sound: 'sand', gravity: true },
+      7:  { id: 7,  name: 'Tuğla',          isBlock: true,  solid: true,  transparent: false, hardness: 2.00, tiles: { top: 8, bottom: 8, side: 8 },   icon: tileIcons.brick,        sound: 'stone', needsPick: true },
+      8:  { id: 8,  name: 'Cam',            isBlock: true,  solid: true,  transparent: true,  hardness: 0.45, tiles: { top: 9, bottom: 9, side: 9 },   icon: tileIcons.glass,        sound: 'stone' },
+      9:  { id: 9,  name: 'Su Kovası',      isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,       sound: 'water', isWater: true, waterLevel: 4 },
+      10: { id: 10, name: 'Akışkan Su 3',   isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,       sound: 'water', isWater: true, waterLevel: 3 },
+      11: { id: 11, name: 'Akışkan Su 2',   isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,       sound: 'water', isWater: true, waterLevel: 2 },
+      12: { id: 12, name: 'Akışkan Su 1',   isBlock: true,  solid: false, transparent: true,  hardness: 999,  tiles: { top: 10, bottom: 10, side: 10 }, icon: tileIcons.water,       sound: 'water', isWater: true, waterLevel: 1 },
+      13: { id: 13, name: 'Meşe Tahtası',   isBlock: true,  solid: true,  transparent: false, hardness: 1.20, tiles: { top: 11, bottom: 11, side: 11 }, icon: tileIcons.planks,      sound: 'wood' },
+      14: { id: 14, name: 'Karlı Blok',     isBlock: true,  solid: true,  transparent: false, hardness: 0.60, tiles: { top: 12, bottom: 3, side: 12 },  icon: tileIcons.snow,        sound: 'sand' },
+      15: { id: 15, name: 'Işık Taşı',      isBlock: true,  solid: true,  transparent: false, hardness: 0.80, tiles: { top: 13, bottom: 13, side: 13 }, icon: tileIcons.glowstone,   sound: 'stone' },
+      16: { id: 16, name: 'Dağ Çiçeği',     isBlock: true,  solid: false, transparent: true,  hardness: 0.10, tiles: { top: 14, bottom: 14, side: 14 }, icon: tileIcons.flower,      sound: 'grass' },
       // Araçlar ve Yiyecekler
       20: { id: 20, name: 'Çubuk (Stick)',          isBlock: false, icon: tileIcons.stick },
       21: { id: 21, name: 'Tahta Kazma (3x Hız)',   isBlock: false, isPickaxe: true, speedMult: 3.2, color: 0xb88d56, icon: tileIcons.woodPick },
       22: { id: 22, name: 'Taş Kazma (5x Hız)',     isBlock: false, isPickaxe: true, speedMult: 5.2, color: 0x878d94, icon: tileIcons.stonePick },
       23: { id: 23, name: 'Kırmızı Elma (+6 Açlık)', isBlock: false, isFood: true, foodRestore: 6, icon: tileIcons.apple },
-      // 5. MADDE: YENİ BLOKLAR VE CEVHERLER
-      24: { id: 24, name: 'Elmas Cevheri',  isBlock: true,  solid: true,  transparent: false, hardness: 3.00, tiles: { top: 15, bottom: 15, side: 15 }, icon: tileIcons.diamondOre, sound: 'ore',   needsPick: true },
-      25: { id: 25, name: 'Obsidyen',       isBlock: true,  solid: true,  transparent: false, hardness: 8.20, tiles: { top: 16, bottom: 16, side: 16 }, icon: tileIcons.obsidian,   sound: 'stone', needsPick: true },
-      26: { id: 26, name: 'Kitaplık',       isBlock: true,  solid: true,  transparent: false, hardness: 1.40, tiles: { top: 11, bottom: 11, side: 17 }, icon: tileIcons.bookshelf,  sound: 'wood' },
-      27: { id: 27, name: 'Altın Cevheri',  isBlock: true,  solid: true,  transparent: false, hardness: 2.80, tiles: { top: 18, bottom: 18, side: 18 }, icon: tileIcons.goldOre,    sound: 'ore',   needsPick: true },
-      28: { id: 28, name: 'TNT',            isBlock: true,  solid: true,  transparent: false, hardness: 0.60, tiles: { top: 20, bottom: 21, side: 19 }, icon: tileIcons.tntSide,    sound: 'sand' }
+      // Yeni Bloklar ve Cevherler
+      24: { id: 24, name: 'Elmas Cevheri',  isBlock: true,  solid: true,  transparent: false, hardness: 3.00, tiles: { top: 15, bottom: 15, side: 15 }, icon: tileIcons.diamondOre,  sound: 'ore',   needsPick: true },
+      25: { id: 25, name: 'Obsidyen',       isBlock: true,  solid: true,  transparent: false, hardness: 8.20, tiles: { top: 16, bottom: 16, side: 16 }, icon: tileIcons.obsidian,    sound: 'stone', needsPick: true },
+      26: { id: 26, name: 'Kitaplık',       isBlock: true,  solid: true,  transparent: false, hardness: 1.40, tiles: { top: 11, bottom: 11, side: 17 }, icon: tileIcons.bookshelf,   sound: 'wood' },
+      27: { id: 27, name: 'Altın Cevheri',  isBlock: true,  solid: true,  transparent: false, hardness: 2.80, tiles: { top: 18, bottom: 18, side: 18 }, icon: tileIcons.goldOre,     sound: 'ore',   needsPick: true },
+      28: { id: 28, name: 'TNT',            isBlock: true,  solid: true,  transparent: false, hardness: 0.60, tiles: { top: 20, bottom: 21, side: 19 }, icon: tileIcons.tntSide,     sound: 'sand' },
+      // 1. MADDE: YENİ EŞYA - ELMAS KILIÇ
+      29: { id: 29, name: 'Elmas Kılıç',    isBlock: false, isSword: true, speedMult: 2.4, icon: tileIcons.diamondSword }
     };
 
     function isWaterId(id) {
       return id >= 9 && id <= 12;
     }
 
-    // Bellek sızıntısını (Memory Leak) önlemek için eşya/parçacık materyal önbelleği
     const cachedItemMaterials = {};
     function getCachedItemMaterial(id) {
       if (!cachedItemMaterials[id]) {
@@ -1236,7 +1277,7 @@
     }
 
     // ============================================================================
-    // 5. THREE.JS SAHNE, GÖLGELER, BULUTLAR, GÜNEŞ VE 3D OYUNCU ELİ
+    // 5. THREE.JS SAHNE, GÖLGELER VE GELİŞMİŞ 3D VIEWMODEL (ELDE TUTMA & SAVURMA)
     // ============================================================================
     const scene = new THREE.Scene();
     const DAY_SKY = new THREE.Color(0x78b7ff);
@@ -1291,52 +1332,92 @@
     }
     scene.add(cloudsGroup);
 
-    // Sağ Alt Köşede 3D Oyuncu Eli / Blok / Kazma Modeli (Bellek dostu paylaşımlı geometri)
+    // ----------------------------------------------------------------------------
+    // 2. MADDE: SAĞ ALT KÖŞE 3D ELDE TUTMA MODELİ (VIEWMODEL) VE ÖNBELLEĞİ
+    // ----------------------------------------------------------------------------
     const handGroup = new THREE.Group();
-    handGroup.position.set(0.52, -0.42, -0.72);
+    handGroup.position.set(0.48, -0.38, -0.68);
     camera.add(handGroup);
 
     const sharedArmGeo = new THREE.BoxGeometry(0.18, 0.48, 0.18);
     const sharedArmMat = new THREE.MeshLambertMaterial({ color: 0xe0ac69 });
-    const sharedBlockHandGeo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
-    const sharedFlatHandGeo = new THREE.BoxGeometry(0.26, 0.26, 0.08);
-    const sharedHandleGeo = new THREE.BoxGeometry(0.06, 0.55, 0.06);
-    const sharedHeadGeo = new THREE.BoxGeometry(0.38, 0.08, 0.08);
-    const sharedStickMat = new THREE.MeshLambertMaterial({ color: 0x7c5436 });
+    const sharedBlockHandGeo = new THREE.BoxGeometry(0.33, 0.33, 0.33);
+    const cachedViewmodels = {};
+
+    // 32x32 Canvas İkonundan 3D Voksel Kılıç / Eşya Modeli Üretici (Minecraft 3D Item Sprite Görünümü)
+    function create3DVoxelSpriteFromCanvas(canvas, thickness = 0.045) {
+      const group = new THREE.Group();
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.getImageData(0, 0, 32, 32).data;
+      const step = 2; // 16x16 voksel çözünürlüğü
+      const pSize = 0.028;
+      const voxelGeo = new THREE.BoxGeometry(pSize, pSize, thickness);
+
+      for (let y = 0; y < 32; y += step) {
+        for (let x = 0; x < 32; x += step) {
+          const idx = (y * 32 + x) * 4;
+          const a = imgData[idx + 3];
+          if (a < 80) continue;
+          const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
+          const mat = new THREE.MeshLambertMaterial({
+            color: new THREE.Color(`rgb(${r},${g},${b})`)
+          });
+          const vox = new THREE.Mesh(voxelGeo, mat);
+          vox.position.set(
+            ((x / step) - 8) * pSize,
+            (8 - (y / step)) * pSize,
+            0
+          );
+          group.add(vox);
+        }
+      }
+      return group;
+    }
+
+    function getOrBuildViewmodel(itemId) {
+      if (cachedViewmodels[itemId]) return cachedViewmodels[itemId];
+
+      const itemDef = ITEMS[itemId];
+      const holder = new THREE.Group();
+
+      if (itemDef.isSword) {
+        // Elmas Kılıç: Elde dikey-çapraz şık duruş
+        const swordMesh = create3DVoxelSpriteFromCanvas(itemDef.icon, 0.042);
+        swordMesh.scale.set(1.22, 1.22, 1.22);
+        swordMesh.rotation.set(0.15, -1.35, -0.35);
+        swordMesh.position.set(0.02, 0.06, -0.05);
+        holder.add(swordMesh);
+      } else if (itemDef.isPickaxe || !itemDef.isBlock) {
+        // Kazma, Çubuk, Elma: 3D Voksel Sprite Modeli
+        const toolMesh = create3DVoxelSpriteFromCanvas(itemDef.icon, 0.04);
+        toolMesh.scale.set(1.1, 1.1, 1.1);
+        toolMesh.rotation.set(0.12, -1.25, -0.25);
+        toolMesh.position.set(0.0, 0.02, 0.0);
+        holder.add(toolMesh);
+      } else {
+        // 3D Blok Modeli
+        const bMesh = new THREE.Mesh(sharedBlockHandGeo, getCachedItemMaterial(itemId));
+        bMesh.rotation.set(0.22, 0.68, 0);
+        holder.add(bMesh);
+      }
+
+      cachedViewmodels[itemId] = holder;
+      return holder;
+    }
 
     function RebuildHandModel() {
       while (handGroup.children.length > 0) {
         handGroup.remove(handGroup.children[0]);
       }
       const slotItem = hotbar[selectedSlot];
-      if (!slotItem || slotItem.count <= 0) {
+      if (!slotItem || slotItem.id === 0 || slotItem.count <= 0) {
         const arm = new THREE.Mesh(sharedArmGeo, sharedArmMat);
         arm.rotation.x = Math.PI / 3;
         arm.rotation.z = -0.25;
         handGroup.add(arm);
         return;
       }
-
-      const itemDef = ITEMS[slotItem.id];
-      if (itemDef.isPickaxe) {
-        const pickGroup = new THREE.Group();
-        const headMat = new THREE.MeshLambertMaterial({ color: itemDef.color });
-        const handle = new THREE.Mesh(sharedHandleGeo, sharedStickMat);
-        const headBar = new THREE.Mesh(sharedHeadGeo, headMat);
-        headBar.position.set(0, 0.22, 0);
-        pickGroup.add(handle);
-        pickGroup.add(headBar);
-        pickGroup.rotation.set(0.2, -0.6, 0.3);
-        handGroup.add(pickGroup);
-      } else if (itemDef.isBlock) {
-        const bMesh = new THREE.Mesh(sharedBlockHandGeo, getCachedItemMaterial(slotItem.id));
-        bMesh.rotation.set(0.2, 0.65, 0);
-        handGroup.add(bMesh);
-      } else {
-        const iMesh = new THREE.Mesh(sharedFlatHandGeo, getCachedItemMaterial(slotItem.id));
-        iMesh.rotation.set(0.1, -0.4, 0.1);
-        handGroup.add(iMesh);
-      }
+      handGroup.add(getOrBuildViewmodel(slotItem.id));
     }
 
     let isNight = false;
@@ -1421,25 +1502,23 @@
 
             for (let y = 0; y <= height; y++) {
               if (y === 0) {
-                this.setLocal(lx, y, lz, 25); // En alt katman Obsidyen
+                this.setLocal(lx, y, lz, 25);
                 continue;
               }
 
-              // 3D Mağara Boşlukları
               if (y > 2 && y < height - 2) {
                 const cave = noise.noise3D(wx * 0.075, y * 0.09, wz * 0.075);
                 if (cave > 0.42) continue;
               }
 
               if (y < height - 2) {
-                // Yeraltında doğal Elmas Cevheri ve Altın Cevheri oluşumu
                 const oreHash = Math.abs(Math.sin(wx * 31.17 + y * 17.91 + wz * 47.53) * 43758.5453) % 1;
                 if (y <= 7 && oreHash < 0.022) {
-                  this.setLocal(lx, y, lz, 24); // Elmas Cevheri
+                  this.setLocal(lx, y, lz, 24);
                 } else if (y <= 14 && oreHash > 0.965) {
-                  this.setLocal(lx, y, lz, 27); // Altın Cevheri
+                  this.setLocal(lx, y, lz, 27);
                 } else {
-                  this.setLocal(lx, y, lz, 3);  // Taş
+                  this.setLocal(lx, y, lz, 3);
                 }
               } else if (y < height) {
                 this.setLocal(lx, y, lz, height <= WATER_LEVEL + 1 ? 6 : 2);
@@ -1503,7 +1582,6 @@
           }
         }
       }
-      // 2. MADDE: MEMORY LEAK FİX (GEOMETRY.DISPOSE & MATERIAL.DISPOSE)
       dispose() {
         if (this.opaqueMesh) {
           scene.remove(this.opaqueMesh);
@@ -1601,7 +1679,6 @@
         );
       }
 
-      // 1. MADDE: SU YÜZEYLERİ (UV SCROLLING İÇİN 0..1 ARALIĞI)
       function pushWaterQuad(v0, v1, v2, v3, norm, shade) {
         waPos.push(...v0, ...v1, ...v2, ...v0, ...v2, ...v3);
         for (let i = 0; i < 6; i++) waNorm.push(...norm);
@@ -1623,7 +1700,6 @@
             const wx = wx0 + lx;
             const wz = wz0 + lz;
 
-            // Dağ Çiçeği
             if (id === 16) {
               const s = 0.95;
               pushAtlasQuad(true, [wx+0.15, y, wz+0.15], [wx+0.85, y, wz+0.85], [wx+0.85, y+0.9, wz+0.85], [wx+0.15, y+0.9, wz+0.15], [0,1,0], 14, s, 1,1,1,1);
@@ -1631,15 +1707,12 @@
               continue;
             }
 
-            // 1. MADDE: SU BLOKLARI (%80 YÜKSEKLİK + İÇ YÜZEY GİZLEME / FACE CULLING)
             if (def.isWater) {
               const aboveId = getWorldBlock(wx, y + 1, wz);
-              // Üstünde su yoksa tam su bloğu 0.8 (%80) yüksekliğinde olur; yayılan su kademeli azalır
               const topH = isWaterId(aboveId)
                 ? 1.0
                 : (def.waterLevel === 4 ? 0.80 : (0.14 + def.waterLevel * 0.16));
 
-              // Komşu blok su ise veya katı opak bir bloksa aradaki yüzeyi kesinlikle çizme!
               const canDrawWaterFace = (nx, ny, nz) => {
                 const nId = getWorldBlock(nx, ny, nz);
                 if (isWaterId(nId)) return false;
@@ -1692,7 +1765,6 @@
               continue;
             }
 
-            // Katı ve Yarı Saydam (Cam vb.) Bloklar
             const isTrans = def.transparent;
             function shouldDrawSolidFace(nx, ny, nz) {
               const nId = getWorldBlock(nx, ny, nz);
@@ -1702,7 +1774,6 @@
               return false;
             }
 
-            // Üst Yüz (+Y)
             if (shouldDrawSolidFace(wx, y + 1, wz)) {
               const nN = isOccluding(wx, y+1, wz-1) ? 0.14 : 0;
               const nS = isOccluding(wx, y+1, wz+1) ? 0.14 : 0;
@@ -1717,7 +1788,6 @@
               );
             }
 
-            // Alt Yüz (-Y)
             if (shouldDrawSolidFace(wx, y - 1, wz)) {
               pushAtlasQuad(
                 isTrans,
@@ -1728,7 +1798,6 @@
               );
             }
 
-            // Ön Yüz (+Z)
             if (shouldDrawSolidFace(wx, y, wz + 1)) {
               const bOcc = isOccluding(wx, y - 1, wz + 1) ? 0.82 : 0.98;
               pushAtlasQuad(
@@ -1740,7 +1809,6 @@
               );
             }
 
-            // Arka Yüz (-Z)
             if (shouldDrawSolidFace(wx, y, wz - 1)) {
               const bOcc = isOccluding(wx, y - 1, wz - 1) ? 0.82 : 0.98;
               pushAtlasQuad(
@@ -1752,7 +1820,6 @@
               );
             }
 
-            // Sağ Yüz (+X)
             if (shouldDrawSolidFace(wx + 1, y, wz)) {
               const bOcc = isOccluding(wx + 1, y - 1, wz) ? 0.82 : 0.98;
               pushAtlasQuad(
@@ -1764,7 +1831,6 @@
               );
             }
 
-            // Sol Yüz (-X)
             if (shouldDrawSolidFace(wx - 1, y, wz)) {
               const bOcc = isOccluding(wx - 1, y - 1, wz) ? 0.82 : 0.98;
               pushAtlasQuad(
@@ -1834,11 +1900,9 @@
       }
     }
 
-    // 2. MADDE: SIRALI CHUNK YÜKLEME (THROTTLING - HER FRAME'DE SADECE 1 CHUNK)
     function updateChunksAroundPlayer(px, pz) {
       const { cx: pcx, cz: pcz } = worldToChunk(px, pz);
 
-      // Uzaklaşılan chunk'ları bellekten (geometry + material dispose ile) tamamen sil
       for (const [key, ch] of chunks.entries()) {
         if (Math.abs(ch.cx - pcx) > RENDER_DISTANCE + 1 || Math.abs(ch.cz - pcz) > RENDER_DISTANCE + 1) {
           ch.dispose();
@@ -1847,7 +1911,6 @@
         }
       }
 
-      // Eksik chunk'ları oyuncuya olan mesafesine göre sırala ve kare başına SADECE 1 TANE üret
       const missingCoords = [];
       for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
         for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
@@ -1868,7 +1931,6 @@
         dirtyChunks.add(target.ck);
       }
 
-      // Yeniden çizilmesi gereken (dirty) chunk'lardan kare başına SADECE 1 TANESİNİ çiz
       if (dirtyChunks.size > 0) {
         let bestKey = null;
         let bestDist = Infinity;
@@ -1917,7 +1979,6 @@
                 const wx = wx0 + lx;
                 const wz = wz0 + lz;
 
-                // KUM FİZİĞİ
                 if (id === 6) {
                   const below = getWorldBlock(wx, y - 1, wz);
                   if (below === 0 || isWaterId(below)) {
@@ -1925,7 +1986,6 @@
                   }
                 }
 
-                // SU FİZİĞİ
                 if (isWaterId(id)) {
                   const level = ITEMS[id].waterLevel;
                   const below = getWorldBlock(wx, y - 1, wz);
@@ -1975,45 +2035,47 @@
     }, 200);
 
     // ============================================================================
-    // 8. HAYATTA KALMA MODU, ENVANTER KORUMA + 5 YENİ BLOK ("E" VE "G" TUŞU)
+    // 8. ENVANTER, HOTBAR VE ELMAS KILIÇ CRAFTING SİSTEMİ ("E" VE "G" TUŞU)
     // ============================================================================
     let isCreative = false;
     let isFlying = false;
     let selectedSlot = 0;
 
-    // Mevcut 9'lu Hotbar (KESİNLİKLE KORUNDU)
+    // 9'lu Hotbar (Elmas Kılıç 9. Slotta Hemen Kullanıma Hazır)
     const hotbar = [
-      { id: 1,  count: 12 }, // Çimen
-      { id: 4,  count: 6  }, // Meşe Odunu
-      { id: 3,  count: 8  }, // Taş
-      { id: 6,  count: 10 }, // Kum
-      { id: 9,  count: 2  }, // Su Kovası
-      { id: 8,  count: 6  }, // Cam
-      { id: 15, count: 4  }, // Işık Taşı
-      { id: 23, count: 3  }, // Kırmızı Elma
-      { id: 28, count: 8  }  // TNT (Hızlı test için 9. slotta hazır)
+      { id: 1,  count: 12 }, // 1. Çimen
+      { id: 4,  count: 6  }, // 2. Meşe Odunu
+      { id: 3,  count: 8  }, // 3. Taş
+      { id: 6,  count: 10 }, // 4. Kum
+      { id: 9,  count: 2  }, // 5. Su Kovası
+      { id: 8,  count: 6  }, // 6. Cam
+      { id: 15, count: 4  }, // 7. Işık Taşı
+      { id: 23, count: 3  }, // 8. Kırmızı Elma
+      { id: 29, count: 1  }  // 9. Elmas Kılıç (Diamond Sword)
     ];
 
-    // Mevcut Envanter Korundu + Sonuna 5 Yeni Blok Eklendi
+    // Envanter (Tüm önceki eşyalar, 5 yeni blok ve Elmas Kılıç eksiksiz korundu)
     const backpack = [
       { id: 2,  count: 10 }, // Toprak
       { id: 7,  count: 8  }, // Tuğla
       { id: 5,  count: 8  }, // Yaprak
       { id: 13, count: 4  }, // Meşe Tahtası
-      { id: 20, count: 4  }, // Çubuk
+      { id: 20, count: 4  }, // Çubuk (Stick)
       { id: 21, count: 1  }, // Tahta Kazma
       { id: 22, count: 1  }, // Taş Kazma
       { id: 14, count: 4  }, // Karlı Blok
       { id: 16, count: 4  }, // Dağ Çiçeği
-      // 5. MADDE: MEVCUT ENVANTERİN SONUNA EKLENEN 5 YENİ BLOK
-      { id: 24, count: 12 }, // 1) Elmas Cevheri (Diamond Ore)
-      { id: 25, count: 12 }, // 2) Obsidyen (Obsidian)
-      { id: 26, count: 12 }, // 3) Kitaplık (Bookshelf)
-      { id: 27, count: 12 }, // 4) Altın Cevheri (Gold Ore)
-      { id: 28, count: 12 }  // 5) TNT
+      { id: 24, count: 12 }, // Elmas Cevheri (Diamond Ore)
+      { id: 25, count: 12 }, // Obsidyen (Obsidian)
+      { id: 26, count: 12 }, // Kitaplık (Bookshelf)
+      { id: 27, count: 12 }, // Altın Cevheri (Gold Ore)
+      { id: 28, count: 12 }, // TNT
+      { id: 29, count: 1  }  // Elmas Kılıç (Yedek)
     ];
 
+    // 1. MADDE: ELMAS KILIÇ CRAFTING TARİFİ (1 Çubuk + 2 Elmas Cevheri = 1 Elmas Kılıç)
     const RECIPES = [
+      { resultId: 29, resultCount: 1, req: [{ id: 20, count: 1 }, { id: 24, count: 2 }], desc: '1x Çubuk + 2x Elmas Cevheri -> 1x Elmas Kılıç' },
       { resultId: 13, resultCount: 4, req: [{ id: 4, count: 1 }], desc: '1x Meşe Odunu -> 4x Meşe Tahtası' },
       { resultId: 20, resultCount: 4, req: [{ id: 13, count: 2 }], desc: '2x Meşe Tahtası -> 4x Çubuk' },
       { resultId: 21, resultCount: 1, req: [{ id: 13, count: 3 }, { id: 20, count: 2 }], desc: '3x Tahta + 2x Çubuk -> Tahta Kazma (3x Hız)' },
@@ -2356,7 +2418,7 @@
     }
 
     // ============================================================================
-    // 10. OYUNCU FİZİĞİ, DÜŞME HASARI, SU ALTI NEFES VE BASILI TUTARAK KIRMA
+    // 10. OYUNCU FİZİĞİ, SAVURMA ANİMASYONU (SWING) VE BASILI TUTARAK KIRMA
     // ============================================================================
     const player = {
       width: 0.6,
@@ -2377,7 +2439,6 @@
       damageShake: 0
     };
 
-    // Başlangıç alanı için ilk chunk'ları hazırla
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
         const ck = chunkKey(dx, dz);
@@ -2509,11 +2570,21 @@
       return null;
     }
 
+    // 2. MADDE: SAVURMA ANİMASYONU (SWING ANIMATION) DEĞİŞKENLERİ
     let isLeftMouseDown = false;
+    let isSwinging = false;
+    let swingPhase = 0; // 0 -> 1 tam savurma döngüsü
     let miningTargetKey = '';
     let miningProgress = 0;
     let hitSoundTimer = 0;
-    let swingAnim = 0;
+
+    function triggerSwing() {
+      if (!isSwinging) {
+        isSwinging = true;
+        swingPhase = 0;
+        sfx.playSwordSwing();
+      }
+    }
 
     function updateMiningAndTarget(dt) {
       const hit = voxelRaycast(6.0);
@@ -2546,14 +2617,13 @@
       const heldItem = heldSlot && heldSlot.count > 0 ? ITEMS[heldSlot.id] : null;
 
       let speedMult = 1.0;
-      if (heldItem && heldItem.isPickaxe) {
+      if (heldItem && (heldItem.isPickaxe || heldItem.isSword)) {
         speedMult = heldItem.speedMult;
       }
       if (isCreative) speedMult = 50.0;
 
       const timeNeeded = Math.max(0.08, blockDef.hardness / speedMult);
       miningProgress += dt / timeNeeded;
-      swingAnim += dt * 16;
 
       hitSoundTimer += dt;
       if (hitSoundTimer >= 0.22) {
@@ -2637,7 +2707,6 @@
     window.addEventListener('keydown', (e) => {
       keys[e.code] = true;
 
-      // M Tuşu: Ambient Arka Plan Müziği Aç / Kapat
       if (e.code === 'KeyM') {
         sfx.toggleMusic();
         return;
@@ -2702,7 +2771,7 @@
 
       if (e.button === 0) {
         isLeftMouseDown = true;
-        swingAnim = 0.5;
+        triggerSwing();
       } else if (e.button === 2) {
         const slot = hotbar[selectedSlot];
         if (!slot || slot.id === 0 || slot.count <= 0) return;
@@ -2716,6 +2785,7 @@
               slot.count--;
               if (slot.count <= 0) slot.id = 0;
             }
+            triggerSwing();
             sfx.playPickup();
             renderStatusBars();
             renderHotbarUI();
@@ -2724,7 +2794,10 @@
           return;
         }
 
-        if (!item.isBlock) return;
+        if (!item.isBlock) {
+          triggerSwing();
+          return;
+        }
         const hit = voxelRaycast(6.0);
         if (!hit) return;
 
@@ -2736,7 +2809,7 @@
           const existing = getWorldBlock(nx, ny, nz);
           if (existing === 0 || isWaterId(existing) || existing === 16) {
             setWorldBlock(nx, ny, nz, item.id);
-            swingAnim = 1.2;
+            triggerSwing();
             if (item.isWater) sfx.playSplash();
             else sfx.playHit(item.sound);
 
@@ -2757,7 +2830,7 @@
     });
 
     let survivalTimer = 0;
-    function updatePlayerPhysics(dt) {
+    function updatePlayerPhysics(dt, now) {
       const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
       const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
 
@@ -2833,7 +2906,7 @@
 
       if (player.pos.y < -15) respawnPlayer();
 
-      // 3. MADDE: BLOK TÜRÜNE GÖRE DİNAMİK ADIM SESİ & VIEW BOBBING
+      // Dinamik Adım Sesi & Yürüme Mesafesi
       const horizSpeed = Math.hypot(player.vel.x, player.vel.z);
       if ((player.onGround || player.inWater) && horizSpeed > 0.5 && !isFlying) {
         player.walkDist += horizSpeed * dt;
@@ -2849,15 +2922,42 @@
         }
       }
 
-      if (swingAnim > 0 && !isLeftMouseDown) {
-        swingAnim = Math.max(0, swingAnim - dt * 8);
+      // --------------------------------------------------------------------------
+      // 2. MADDE: ELDE TUTMA (VIEW BOBBING / NEFES ALMA) & SAVURMA (SWING) ANİMASYONU
+      // --------------------------------------------------------------------------
+      if (isSwinging) {
+        swingPhase += dt * 3.8; // Hızlı ve keskin savurma süresi (~0.26 sn)
+        if (swingPhase >= 1.0) {
+          if (isLeftMouseDown) {
+            swingPhase = 0;
+            sfx.playSwordSwing();
+          } else {
+            swingPhase = 0;
+            isSwinging = false;
+          }
+        }
       }
-      const bobX = Math.cos(player.walkDist * 3.0) * 0.03;
-      const bobY = Math.abs(Math.sin(player.walkDist * 3.0)) * 0.035;
-      const strike = Math.sin(swingAnim * Math.PI);
-      handGroup.position.set(0.52 + bobX, -0.42 + bobY - strike * 0.12, -0.72 - strike * 0.15);
-      handGroup.rotation.x = -strike * 0.75;
-      handGroup.rotation.z = strike * 0.35;
+
+      // Nefes alma (Idle Breathing) + Yürürken sağa-sola sallanma (View Bobbing)
+      const breatheX = Math.sin(now * 0.0022) * 0.008;
+      const breatheY = Math.cos(now * 0.0044) * 0.010;
+      const bobX = Math.cos(player.walkDist * 3.0) * 0.036;
+      const bobY = Math.abs(Math.sin(player.walkDist * 3.0)) * 0.042;
+
+      // İleri-aşağı kılıç/eşya savurma eğrisi (Swing Arc)
+      const swingSin = Math.sin(swingPhase * Math.PI);
+      const swingArc = Math.sin(swingPhase * Math.PI * 2);
+
+      handGroup.position.set(
+        0.48 + bobX + breatheX - swingSin * 0.16,
+        -0.38 + bobY + breatheY - swingSin * 0.18,
+        -0.68 - swingSin * 0.22
+      );
+      handGroup.rotation.set(
+        -swingSin * 1.15,
+        swingArc * 0.35,
+        swingSin * 0.55
+      );
 
       survivalTimer += dt;
       if (survivalTimer >= 1.0) {
@@ -2914,13 +3014,11 @@
         fpsClock = now;
       }
 
-      // Bulutların hareketi
       cloudsGroup.children.forEach(c => {
         c.position.x += dt * 0.9;
         if (c.position.x - player.pos.x > 95) c.position.x -= 190;
       });
 
-      // 1. MADDE: SU DOKUSU UV KAYDIRMA (UV SCROLLING) VE VERTEX DALGALANMASI
       waterTexture.offset.x = (waterTexture.offset.x + dt * 0.18) % 1;
       waterTexture.offset.y = (waterTexture.offset.y + dt * 0.12) % 1;
       const waveY = Math.sin(now * 0.0035) * 0.025;
@@ -2931,7 +3029,7 @@
       }
 
       if (isPlaying && !isInventoryOpen) {
-        updatePlayerPhysics(dt);
+        updatePlayerPhysics(dt, now);
         updateMiningAndTarget(dt);
         updateParticlesAndDrops(dt);
         updateChunksAroundPlayer(player.pos.x, player.pos.z);
