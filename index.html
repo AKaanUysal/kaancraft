@@ -454,7 +454,7 @@
         <h2>Envanter & Bloklar (Seçili Hotbar Slotuna Almak İçin Tıkla)</h2>
         <div id="inv-grid"></div>
         <p style="font-size:11px; color:#9ca3af; margin-top:10px;">
-          İpucu: <b>Elmas Kılıç (7 Hasar)</b> ile zombileri avlayabilirsin! Tüm eşyalara tıklayarak alt bara (Hotbar) alabilirsin. Menüyü kapatmak için <b>E</b> tuşuna bas.
+          İpucu: Yere koyduğun <b>TNT</b> bloğuna sağ tıklayarak veya kılıçla vurarak patlatabilirsin! Zombilerden düşen <b>Çürük Et</b> envantere eklenir. Menüyü kapatmak için <b>E</b> tuşuna bas.
         </p>
       </div>
       <div class="inv-section">
@@ -468,12 +468,12 @@
   <div id="overlay">
     <div class="menu-box">
       <h1>KAANCRAFT</h1>
-      <p>Sonsuz Chunk Dünyası • Zombi AI & Savaş Sistemi • Elmas Kılıç • %80 Akışkan Su</p>
+      <p>Sonsuz Chunk • TNT Patlama Fiziği • Zombi AI • Elmas Kılıç • %80 Akışkan Su</p>
       <div class="controls-list">
         <div><b>W, A, S, D:</b> Hareket &nbsp;|&nbsp; <b>Shift:</b> Koşma &nbsp;|&nbsp; <b>Space:</b> Zıplama / Yüzme</div>
-        <div><b>Sol Tık (Tıkla / Basılı Tut):</b> Zombiye Saldırı (Elmas Kılıç: 7 Hasar) & Blok Kırma</div>
-        <div><b>Sağ Tık:</b> Blok Koyma / Elma Yeme &nbsp;|&nbsp; <b>1 - 9 / Scroll:</b> Hotbar Seçimi</div>
-        <div><b>E Tuşu:</b> Envanter & Crafting (1 Çubuk + 2 Elmas Cevheri = Elmas Kılıç)</div>
+        <div><b>Sol Tık (Tıkla / Basılı Tut):</b> Kılıçla Saldırı (7 Hasar) / TNT Ateşleme / Blok Kırma</div>
+        <div><b>Sağ Tık:</b> Blok Koyma / Yerdeki TNT'yi Ateşleme / Yemek Yeme</div>
+        <div><b>E Tuşu:</b> Envanter & Crafting (Elmas Kılıç, TNT, Kazma, Kitaplık)</div>
         <div><b>M Tuşu:</b> Ambient Arka Plan Müziği Aç / Kapat</div>
         <div><b>G Tuşu:</b> Hayatta Kalma / Yaratıcı (Uçma: F) Modu &nbsp;|&nbsp; <b>T Tuşu:</b> Gündüz/Gece</div>
       </div>
@@ -548,7 +548,7 @@
     const noise = new PerlinNoise(4291);
 
     // ============================================================================
-    // 2. DİNAMİK SES MOTORU, AMBIENT MÜZİK & ZOMBİ / XP SAVAŞ SESLERİ
+    // 2. DİNAMİK SES MOTORU, AMBIENT MÜZİK, ZOMBİ & TNT PATLAMA SESLERİ
     // ============================================================================
     class RealisticSoundEngine {
       constructor() {
@@ -574,7 +574,7 @@
       }
       buildNoiseBuffers() {
         const sr = this.ctx.sampleRate;
-        const len = sr * 1.5;
+        const len = sr * 3.2; // 3 saniyelik TNT fitili için geniş tampon
         this.whiteBuffer = this.ctx.createBuffer(1, len, sr);
         this.pinkBuffer = this.ctx.createBuffer(1, len, sr);
         const wData = this.whiteBuffer.getChannelData(0);
@@ -619,8 +619,68 @@
           filter.connect(gain);
           gain.connect(this.ctx.destination);
 
-          const offset = Math.random() * 0.8;
+          const offset = Math.random() * 0.5;
           src.start(now, offset, duration);
+        } catch (e) {}
+      }
+
+      // TNT Fitil "Tıss" Sesi (White Noise Sizzle)
+      playTNTFuse() {
+        this.playNoiseBurst({
+          pink: false,
+          filterType: 'bandpass',
+          freqStart: 3200,
+          freqEnd: 5200,
+          q: 1.8,
+          duration: 2.95,
+          gainVal: 0.32
+        });
+      }
+
+      // TNT "BOM" Patlama Sesi (Derin Bas + Gürültü Şok Dalgası)
+      playTNTExplosion() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          // Alt frekans şok dalgası (Sub-bass punch)
+          const osc = this.ctx.createOscillator();
+          const oscGain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(135, now);
+          osc.frequency.exponentialRampToValueAtTime(24, now + 0.65);
+
+          oscGain.gain.setValueAtTime(0.95, now);
+          oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.70);
+
+          osc.connect(oscGain);
+          oscGain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.72);
+
+          // Tok patlama gövdesi (Pink noise lowpass)
+          this.playNoiseBurst({
+            pink: true,
+            filterType: 'lowpass',
+            freqStart: 480,
+            freqEnd: 55,
+            q: 1.2,
+            duration: 0.85,
+            gainVal: 0.90
+          });
+
+          // Parçalanma / Enkaz çatırtısı (White noise bandpass)
+          this.playNoiseBurst({
+            pink: false,
+            filterType: 'bandpass',
+            freqStart: 1200,
+            freqEnd: 180,
+            q: 1.0,
+            duration: 0.65,
+            gainVal: 0.55,
+            delay: 0.03
+          });
         } catch (e) {}
       }
 
@@ -690,7 +750,6 @@
         });
       }
 
-      // 3. MADDE: PES VE BOĞUK ZOMBİ İNLEMESİ / HASAR SESİ
       playZombieHurt(isDeath = false) {
         try {
           this.init();
@@ -698,7 +757,6 @@
           const now = this.ctx.currentTime;
           const dur = isDeath ? 0.48 : 0.26;
 
-          // Boğuk testere dişi (sawtooth) vokal hırıltı
           const osc = this.ctx.createOscillator();
           const osc2 = this.ctx.createOscillator();
           osc.type = 'sawtooth';
@@ -732,7 +790,6 @@
           osc.stop(now + dur + 0.02);
           osc2.stop(now + dur + 0.02);
 
-          // Tok et darbe katmanı
           this.playNoiseBurst({
             pink: true,
             filterType: 'lowpass',
@@ -745,12 +802,11 @@
         } catch (e) {}
       }
 
-      // 3. MADDE: ZOMBİ ÖLDÜĞÜNDE ÇALAN PARLAK "XP" SESİ
       playXPChime() {
         try {
           this.init();
           if (!this.ctx) return;
-          const notes = [880, 1174.66, 1567.98]; // A5 - D6 - G6 kristal XP tınısı
+          const notes = [880, 1174.66, 1567.98];
           notes.forEach((freq, idx) => {
             const now = this.ctx.currentTime + idx * 0.065;
             const osc = this.ctx.createOscillator();
@@ -877,7 +933,7 @@
     const sfx = new RealisticSoundEngine();
 
     // ============================================================================
-    // 3. 32x32 HD PIXEL ART TEXTURE ATLAS + ELMAS KILIÇ DOKUSU
+    // 3. 32x32 HD PIXEL ART TEXTURE ATLAS + ELMAS KILIÇ & ÇÜRÜK ET DOKUSU
     // ============================================================================
     const TILE_SIZE = 32;
     const ATLAS_COLS = 16;
@@ -1217,6 +1273,19 @@
         ctx.fillRect(27, 2, 3, 3);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(28, 3, 2, 2);
+      } else if (type === 'rotten_flesh') {
+        // Çürük Et (Rotten Flesh) Piksel İkonu
+        ctx.fillStyle = '#7f1d1d';
+        ctx.fillRect(6, 8, 18, 16);
+        ctx.fillStyle = '#991b1b';
+        ctx.fillRect(8, 6, 14, 18);
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillRect(10, 10, 10, 10);
+        // Yeşilimsi çürük lekeler
+        ctx.fillStyle = '#4d7c3f';
+        ctx.fillRect(8, 9, 4, 4);
+        ctx.fillRect(17, 15, 5, 4);
+        ctx.fillRect(11, 18, 4, 3);
       }
       return c;
     }
@@ -1226,6 +1295,7 @@
     tileIcons.stonePick = createToolIcon('stone_pick');
     tileIcons.apple = createToolIcon('apple');
     tileIcons.diamondSword = createToolIcon('diamond_sword');
+    tileIcons.rottenFlesh = createToolIcon('rotten_flesh');
 
     const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
     atlasTexture.magFilter = THREE.NearestFilter;
@@ -1241,7 +1311,6 @@
     waterTexture.generateMipmaps = false;
     waterTexture.needsUpdate = true;
 
-    // 10 Aşamalı Kırma Çatlak Dokusu
     const crackMaterials = [];
     for (let stage = 0; stage < 10; stage++) {
       const c = document.createElement('canvas');
@@ -1299,7 +1368,8 @@
       26: { id: 26, name: 'Kitaplık',       isBlock: true,  solid: true,  transparent: false, hardness: 1.40, tiles: { top: 11, bottom: 11, side: 17 }, icon: tileIcons.bookshelf,   sound: 'wood' },
       27: { id: 27, name: 'Altın Cevheri',  isBlock: true,  solid: true,  transparent: false, hardness: 2.80, tiles: { top: 18, bottom: 18, side: 18 }, icon: tileIcons.goldOre,     sound: 'ore',   needsPick: true },
       28: { id: 28, name: 'TNT',            isBlock: true,  solid: true,  transparent: false, hardness: 0.60, tiles: { top: 20, bottom: 21, side: 19 }, icon: tileIcons.tntSide,     sound: 'sand' },
-      29: { id: 29, name: 'Elmas Kılıç',    isBlock: false, isSword: true, speedMult: 2.4, damage: 7, icon: tileIcons.diamondSword }
+      29: { id: 29, name: 'Elmas Kılıç',    isBlock: false, isSword: true, speedMult: 2.4, damage: 7, icon: tileIcons.diamondSword },
+      30: { id: 30, name: 'Çürük Et (+3 Açlık)',     isBlock: false, isFood: true, foodRestore: 3, icon: tileIcons.rottenFlesh }
     };
 
     function isWaterId(id) {
@@ -1377,7 +1447,6 @@
     }
     scene.add(cloudsGroup);
 
-    // Sağ Alt Köşe 3D Elde Tutma Modeli (Viewmodel)
     const handGroup = new THREE.Group();
     handGroup.position.set(0.48, -0.38, -0.68);
     camera.add(handGroup);
@@ -1472,7 +1541,7 @@
     }
 
     // ============================================================================
-    // 6. DİNAMİK 16x16 SONSUZ CHUNK SİSTEMİ, %80 SU MESHİ & BELLEK YÖNETİMİ
+    // 6. DİNAMİK 16x16 SONSUZ CHUNK SİSTEMİ & DÜZELTİLMİŞ SU YÜZEY/DERİNLİK MESHİ
     // ============================================================================
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 48;
@@ -1746,6 +1815,11 @@
               continue;
             }
 
+            // ------------------------------------------------------------------
+            // SU DOĞRU YÜZEY GİZLEME (FACE CULLING) VE YAN YÜZEY ÇİZİMİ
+            // Sadece iki su bloğu yan yana/üst üste geldiğinde aradaki yüzeyi gizle!
+            // Yanında Hava (0) veya Katı Blok (Çimen, Kum vb.) varsa yan yüzeyi MUTLAKA ÇİZ!
+            // ------------------------------------------------------------------
             if (def.isWater) {
               const aboveId = getWorldBlock(wx, y + 1, wz);
               const topH = isWaterId(aboveId)
@@ -1754,9 +1828,7 @@
 
               const canDrawWaterFace = (nx, ny, nz) => {
                 const nId = getWorldBlock(nx, ny, nz);
-                if (isWaterId(nId)) return false;
-                if (nId !== 0 && ITEMS[nId] && !ITEMS[nId].transparent) return false;
-                return true;
+                return !isWaterId(nId);
               };
 
               if (canDrawWaterFace(wx, y + 1, wz)) {
@@ -1894,6 +1966,7 @@
         const mesh = new THREE.Mesh(geo, mat);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        mesh.renderOrder = 0;
         scene.add(mesh);
         chunk.opaqueMesh = mesh;
       }
@@ -1914,10 +1987,12 @@
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
+        mesh.renderOrder = 1;
         scene.add(mesh);
         chunk.transMesh = mesh;
       }
 
+      // SU MATERYALİ: transparent: true, opacity: 0.6 ve depthWrite: false
       if (waPos.length > 0) {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(waPos, 3));
@@ -1928,12 +2003,15 @@
           map: waterTexture,
           vertexColors: true,
           transparent: true,
-          opacity: 0.78,
+          opacity: 0.6,
           depthWrite: false,
-          side: THREE.DoubleSide
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -1
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
+        mesh.renderOrder = 2;
         scene.add(mesh);
         chunk.waterMesh = mesh;
       }
@@ -1970,7 +2048,9 @@
         dirtyChunks.add(target.ck);
       }
 
-      if (dirtyChunks.size > 0) {
+      // TNT patlaması gibi çoklu blok değişimlerinde anında tepki için kare başına 2 dirty chunk güncelle
+      let rebuildCount = 0;
+      while (dirtyChunks.size > 0 && rebuildCount < 2) {
         let bestKey = null;
         let bestDist = Infinity;
         for (const ck of dirtyChunks) {
@@ -1989,6 +2069,9 @@
           dirtyChunks.delete(bestKey);
           const ch = chunks.get(bestKey);
           if (ch) buildChunkMesh(ch);
+          rebuildCount++;
+        } else {
+          break;
         }
       }
 
@@ -2074,7 +2157,7 @@
     }, 200);
 
     // ============================================================================
-    // 8. ENVANTER, HOTBAR VE ELMAS KILIÇ CRAFTING SİSTEMİ ("E" VE "G" TUŞU)
+    // 8. ENVANTER, HOTBAR VE CRAFTING SİSTEMİ ("E" VE "G" TUŞU)
     // ============================================================================
     let isCreative = false;
     let isFlying = false;
@@ -2088,7 +2171,7 @@
       { id: 6,  count: 10 }, // 4. Kum
       { id: 9,  count: 2  }, // 5. Su Kovası
       { id: 8,  count: 6  }, // 6. Cam
-      { id: 15, count: 4  }, // 7. Işık Taşı
+      { id: 28, count: 8  }, // 7. TNT (Ateşleme & Patlama testi için hazır)
       { id: 23, count: 3  }, // 8. Kırmızı Elma
       { id: 29, count: 1  }  // 9. Elmas Kılıç (Diamond Sword)
     ];
@@ -2102,6 +2185,7 @@
       { id: 21, count: 1  },
       { id: 22, count: 1  },
       { id: 14, count: 4  },
+      { id: 15, count: 4  },
       { id: 16, count: 4  },
       { id: 24, count: 12 },
       { id: 25, count: 12 },
@@ -2365,12 +2449,14 @@
     }
 
     // ============================================================================
-    // 9. 3D PARÇACIKLAR (PARTICLE BURST) VE MIKNATISLI 3D DROP İTEMLERİ
+    // 9. 3D PARÇACIKLAR, MIKNATISLI 3D DROP İTEMLERİ VE TNT PATLAMA FİZİĞİ
     // ============================================================================
     const particles = [];
     const droppedItems = [];
+    const activeTNTs = [];
     const particleGeo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     const dropGeo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
+    const tntGeo = new THREE.BoxGeometry(0.98, 0.98, 0.98);
 
     function spawnBreakParticles(bx, by, bz, blockId) {
       const def = ITEMS[blockId];
@@ -2393,23 +2479,181 @@
       }
     }
 
-    function spawnDroppedItem(bx, by, bz, blockId) {
-      const def = ITEMS[blockId];
+    // Zombi ölümüne özel kan/zombi parçacıkları (Çimen düşürmemesi için)
+    const zombieDeathMat = new THREE.MeshLambertMaterial({ color: 0x991b1b });
+    function spawnZombieDeathParticles(px, py, pz) {
+      for (let i = 0; i < 18; i++) {
+        const mesh = new THREE.Mesh(particleGeo, zombieDeathMat);
+        mesh.position.set(
+          px + (Math.random() - 0.5) * 0.6,
+          py + 0.3 + Math.random() * 1.1,
+          pz + (Math.random() - 0.5) * 0.6
+        );
+        scene.add(mesh);
+        particles.push({
+          mesh,
+          vel: new THREE.Vector3((Math.random() - 0.5) * 5.0, 2.2 + Math.random() * 3.5, (Math.random() - 0.5) * 5.0),
+          life: 0.65 + Math.random() * 0.35
+        });
+      }
+    }
+
+    // TNT Patlama Alev / Duman Parçacıkları
+    const explosionFireMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+    const explosionSmokeMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+    function spawnExplosionParticles(cx, cy, cz) {
+      for (let i = 0; i < 42; i++) {
+        const isFire = i % 2 === 0;
+        const mesh = new THREE.Mesh(particleGeo, isFire ? explosionFireMat : explosionSmokeMat);
+        mesh.scale.set(1.6, 1.6, 1.6);
+        mesh.position.set(
+          cx + (Math.random() - 0.5) * 1.8,
+          cy + (Math.random() - 0.5) * 1.8,
+          cz + (Math.random() - 0.5) * 1.8
+        );
+        scene.add(mesh);
+        particles.push({
+          mesh,
+          vel: new THREE.Vector3((Math.random() - 0.5) * 14.0, 3.0 + Math.random() * 10.0, (Math.random() - 0.5) * 14.0),
+          life: 0.55 + Math.random() * 0.55
+        });
+      }
+    }
+
+    function spawnDroppedItem(bx, by, bz, itemId) {
+      const def = ITEMS[itemId];
       if (!def) return;
-      const mesh = new THREE.Mesh(dropGeo, getCachedItemMaterial(blockId));
+      const isFlatItem = !def.isBlock;
+      const geo = isFlatItem ? sharedFlatHandGeo : dropGeo;
+      const mesh = new THREE.Mesh(geo, getCachedItemMaterial(itemId));
       mesh.position.set(bx + 0.5, by + 0.45, bz + 0.5);
       mesh.castShadow = true;
       scene.add(mesh);
 
       droppedItems.push({
         mesh,
-        id: blockId,
+        id: itemId,
         velY: 2.5,
         age: 0
       });
     }
 
-    function updateParticlesAndDrops(dt) {
+    // ----------------------------------------------------------------------------
+    // 1. GÜNCELLEME: TNT ATEŞLEME (IGNITE), 3SN YANIP SÖNME VE PATLAMA FİZİĞİ
+    // ----------------------------------------------------------------------------
+    const tntSideTex = new THREE.CanvasTexture(tileIcons.tntSide);
+    tntSideTex.magFilter = THREE.NearestFilter;
+    const tntTopTex = new THREE.CanvasTexture(tileIcons.tntTop);
+    tntTopTex.magFilter = THREE.NearestFilter;
+    const tntBotTex = new THREE.CanvasTexture(tileIcons.tntBottom);
+    tntBotTex.magFilter = THREE.NearestFilter;
+
+    function igniteTNTBlock(bx, by, bz, customFuse = 3.0) {
+      // Dünyadaki katı TNT bloğunu kaldır ve yerine aktif 3D TNT nesnesi koy
+      setWorldBlock(bx, by, bz, 0);
+      sfx.playTNTFuse();
+
+      const mats = [
+        new THREE.MeshLambertMaterial({ map: tntSideTex }),
+        new THREE.MeshLambertMaterial({ map: tntSideTex }),
+        new THREE.MeshLambertMaterial({ map: tntTopTex }),
+        new THREE.MeshLambertMaterial({ map: tntBotTex }),
+        new THREE.MeshLambertMaterial({ map: tntSideTex }),
+        new THREE.MeshLambertMaterial({ map: tntSideTex })
+      ];
+      const mesh = new THREE.Mesh(tntGeo, mats);
+      mesh.position.set(bx + 0.5, by + 0.5, bz + 0.5);
+      mesh.castShadow = true;
+      scene.add(mesh);
+
+      activeTNTs.push({
+        mesh,
+        mats,
+        pos: mesh.position,
+        velY: 3.2, // Ateşlendiğinde hafifçe yukarı sıçrar
+        fuse: customFuse
+      });
+    }
+
+    function triggerTNTExplosion(centerPos) {
+      sfx.playTNTExplosion();
+      spawnExplosionParticles(centerPos.x, centerPos.y, centerPos.z);
+
+      const cx = Math.floor(centerPos.x);
+      const cy = Math.floor(centerPos.y);
+      const cz = Math.floor(centerPos.z);
+      const radius = 3;
+
+      // 3 blok yarıçapındaki tüm blokları yok et (Air/Boşluk yap)
+      for (let dx = -radius; dx <= radius; dx++) {
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq <= radius * radius + 1.2) {
+              const tx = cx + dx;
+              const ty = cy + dy;
+              const tz = cz + dz;
+              if (ty <= 0) continue; // En alt taban katmanı koru
+              const bId = getWorldBlock(tx, ty, tz);
+              if (bId !== 0) {
+                if (bId === 28) {
+                  // Menzilde başka TNT varsa zincirleme ateşle!
+                  igniteTNTBlock(tx, ty, tz, 0.6 + Math.random() * 0.5);
+                } else {
+                  setWorldBlock(tx, ty, tz, 0);
+                  if (Math.random() < 0.25 && !isWaterId(bId) && !isCreative) {
+                    spawnDroppedItem(tx, ty, tz, bId);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Menzildeki Zombilere Yüksek Hasar ve Knockback Uygula
+      const blastRadius = 6.2;
+      for (let i = zombies.length - 1; i >= 0; i--) {
+        const z = zombies[i];
+        const dist = z.pos.distanceTo(centerPos);
+        if (dist < blastRadius) {
+          const factor = 1 - (dist / blastRadius);
+          const dmg = Math.ceil(24 * factor);
+          const died = z.takeDamage(dmg, centerPos);
+          // Güçlü patlama fırlatması
+          const kbDir = z.pos.clone().sub(centerPos);
+          kbDir.y = 0;
+          if (kbDir.lengthSq() > 0.001) kbDir.normalize();
+          z.vel.x = kbDir.x * (14 * factor);
+          z.vel.z = kbDir.z * (14 * factor);
+          z.vel.y = 9.5 * factor;
+          if (died) {
+            z.dispose();
+            zombies.splice(i, 1);
+            document.getElementById('mob-val').textContent = zombies.length;
+          }
+        }
+      }
+
+      // Menzildeki Oyuncuya Yüksek Hasar, Sarsıntı ve Knockback Uygula
+      const pDist = player.pos.distanceTo(centerPos);
+      if (pDist < blastRadius) {
+        const factor = 1 - (pDist / blastRadius);
+        const pDmg = Math.max(2, Math.floor(16 * factor));
+        applyDamage(pDmg);
+        player.damageShake = 0.65;
+
+        const pushDir = player.pos.clone().sub(centerPos);
+        pushDir.y = 0;
+        if (pushDir.lengthSq() > 0.001) pushDir.normalize();
+        player.knockbackVel.set(pushDir.x * (16 * factor), 0, pushDir.z * (16 * factor));
+        player.vel.y = Math.max(player.vel.y, 9.2 * factor);
+        player.onGround = false;
+      }
+    }
+
+    function updateParticlesDropsAndTNT(dt) {
+      // Parçacıklar
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.life -= dt;
@@ -2424,6 +2668,42 @@
         p.mesh.rotation.y += 5 * dt;
       }
 
+      // Aktif TNT Blokları (Yerçekimi + Beyaz/Kırmızı Yanıp Sönme + 3sn Sonra Patlama)
+      for (let i = activeTNTs.length - 1; i >= 0; i--) {
+        const t = activeTNTs[i];
+        t.fuse -= dt;
+
+        // Yerçekimi
+        t.velY -= 22 * dt;
+        const nextY = t.pos.y + t.velY * dt;
+        const belowId = getWorldBlock(Math.floor(t.pos.x), Math.floor(nextY - 0.5), Math.floor(t.pos.z));
+        if (belowId !== 0 && ITEMS[belowId] && ITEMS[belowId].solid) {
+          t.velY = 0;
+          t.pos.y = Math.floor(nextY - 0.5) + 1.5;
+        } else {
+          t.pos.y = nextY;
+        }
+
+        // Beyaz - Kırmızı Yanıp Sönme (Fuse Flash Animation)
+        const flashState = Math.sin(t.fuse * 24) > 0;
+        const emissiveHex = flashState ? 0xffffff : 0xdc2626;
+        for (const m of t.mats) {
+          m.emissive.setHex(emissiveHex);
+        }
+        // Patlamaya yakın hafif şişme efekti
+        const swell = 1.0 + Math.max(0, (0.6 - t.fuse) * 0.25);
+        t.mesh.scale.set(swell, swell, swell);
+
+        if (t.fuse <= 0) {
+          const blastCenter = t.pos.clone();
+          scene.remove(t.mesh);
+          for (const m of t.mats) m.dispose();
+          activeTNTs.splice(i, 1);
+          triggerTNTExplosion(blastCenter);
+        }
+      }
+
+      // Düşen İtemler
       const playerCenter = new THREE.Vector3(player.pos.x, player.pos.y + 0.9, player.pos.z);
       for (let i = droppedItems.length - 1; i >= 0; i--) {
         const d = droppedItems[i];
@@ -2455,19 +2735,16 @@
     }
 
     // ============================================================================
-    // 10. DÜŞMAN (ZOMBİ) MODELİ, YAPAY ZEKA VE SAVAŞ SİSTEMİ
+    // 10. DÜŞMAN (ZOMBİ) MODELİ, ENGEL AŞMA (AUTO-JUMP) AI & ÇÜRÜK ET GANİMETİ
     // ============================================================================
     const MAX_ZOMBIES = 4;
     const zombies = [];
     let zombieSpawnTimer = 0;
 
-    // Paylaşımlı Zombi BoxGeometry Parçaları
     const zHeadGeo  = new THREE.BoxGeometry(0.50, 0.50, 0.50);
     const zBodyGeo  = new THREE.BoxGeometry(0.50, 0.72, 0.26);
     const zLimbGeo  = new THREE.BoxGeometry(0.24, 0.70, 0.24);
-    const zEyeGeo   = new THREE.BoxGeometry(0.10, 0.08, 0.04);
 
-    // Zombi Yüz Dokusu (Yeşil Kafa + Koyu Gözler)
     const zombieFaceCanvas = document.createElement('canvas');
     zombieFaceCanvas.width = 16;
     zombieFaceCanvas.height = 16;
@@ -2477,7 +2754,6 @@
     zfCtx.fillStyle = '#3f6833';
     zfCtx.fillRect(2, 2, 5, 3);
     zfCtx.fillRect(10, 3, 4, 2);
-    // Siyah zombi gözleri ve ağız
     zfCtx.fillStyle = '#111827';
     zfCtx.fillRect(2, 7, 4, 2);
     zfCtx.fillRect(10, 7, 4, 2);
@@ -2501,7 +2777,6 @@
         this.attackCooldown = 0;
         this.hitFlashTimer = 0;
 
-        // Her zombiye özel materyaller (Hasar aldığında sadece o zombi kırmızıya dönsün)
         this.skinMat  = new THREE.MeshLambertMaterial({ color: 0x4d7c3f });
         this.faceMat  = new THREE.MeshLambertMaterial({ map: zombieFaceTex });
         this.shirtMat = new THREE.MeshLambertMaterial({ color: 0x0284c7 });
@@ -2511,7 +2786,6 @@
         this.group = new THREE.Group();
         this.group.position.copy(this.pos);
 
-        // Kafa (Yeşil + Ön yüz dokulu)
         const headMats = [
           this.skinMat, this.skinMat, this.skinMat,
           this.skinMat, this.faceMat, this.skinMat
@@ -2521,13 +2795,11 @@
         this.headMesh.castShadow = true;
         this.group.add(this.headMesh);
 
-        // Gövde (Mavi Tişört)
         this.bodyMesh = new THREE.Mesh(zBodyGeo, this.shirtMat);
         this.bodyMesh.position.set(0, 0.94, 0);
         this.bodyMesh.castShadow = true;
         this.group.add(this.bodyMesh);
 
-        // Sol ve Sağ Kollar (Omuzdan pivotlu, öne doğru uzanmış klasik Zombi duruşu)
         this.leftArmPivot = new THREE.Group();
         this.leftArmPivot.position.set(-0.38, 1.25, 0);
         const leftArm = new THREE.Mesh(zLimbGeo, this.skinMat);
@@ -2546,7 +2818,6 @@
         this.rightArmPivot.rotation.x = -Math.PI / 2.2;
         this.group.add(this.rightArmPivot);
 
-        // Sol ve Sağ Bacaklar (Kalçadan pivotlu, koyu mavi pantolon)
         this.leftLegPivot = new THREE.Group();
         this.leftLegPivot.position.set(-0.14, 0.60, 0);
         const leftLeg = new THREE.Mesh(zLimbGeo, this.pantsMat);
@@ -2563,7 +2834,6 @@
         this.rightLegPivot.add(rightLeg);
         this.group.add(this.rightLegPivot);
 
-        // Raycaster için referans
         this.group.traverse(obj => {
           if (obj.isMesh) obj.userData.zombie = this;
         });
@@ -2583,7 +2853,6 @@
         this.hitFlashTimer = 0.24;
         this.setFlashRed(true);
 
-        // Zombiyi oyuncunun vuruş yönüne doğru geriye savur (Knockback)
         const kbDir = this.pos.clone().sub(attackerPos);
         kbDir.y = 0;
         if (kbDir.lengthSq() > 0.001) kbDir.normalize();
@@ -2592,14 +2861,15 @@
         this.vel.y = 5.2;
         this.onGround = false;
 
+        // 3. GÜNCELLEME: ZOMBİ ÖLDÜĞÜNDE ÇİMEN YERİNE "ÇÜRÜK ET" (ID: 30) DÜŞÜRÜR
         if (this.hp <= 0) {
           sfx.playZombieHurt(true);
           sfx.playXPChime();
-          spawnBreakParticles(this.pos.x - 0.3, this.pos.y + 0.5, this.pos.z - 0.3, 1);
-          spawnDroppedItem(this.pos.x - 0.3, this.pos.y + 0.3, this.pos.z - 0.3, 23); // Ödül Kırmızı Elma düşür
+          spawnZombieDeathParticles(this.pos.x, this.pos.y, this.pos.z);
+          spawnDroppedItem(this.pos.x - 0.3, this.pos.y + 0.3, this.pos.z - 0.3, 30); // Çürük Et (Rotten Flesh)
           playerXP += 10;
           document.getElementById('xp-val').textContent = playerXP;
-          return true; // Öldü
+          return true;
         } else {
           sfx.playZombieHurt(false);
           return false;
@@ -2624,7 +2894,6 @@
       }
 
       update(dt) {
-        // Kırmızı hasar parlama süresini güncelle
         if (this.hitFlashTimer > 0) {
           this.hitFlashTimer -= dt;
           if (this.hitFlashTimer <= 0) {
@@ -2636,7 +2905,6 @@
           this.attackCooldown -= dt;
         }
 
-        // 2. MADDE: OYUNCUYA DOĞRU BAKMA (LOOKAT) VE YÜRÜME YAPAY ZEKASI
         const toPlayer = new THREE.Vector3(
           player.pos.x - this.pos.x,
           0,
@@ -2644,16 +2912,31 @@
         );
         const distToPlayer = toPlayer.length();
 
-        // Zombi yüzünü oyuncuya dönsün
         this.group.lookAt(player.pos.x, this.pos.y, player.pos.z);
 
-        const moveSpeed = 2.35;
+        const moveSpeed = 2.45;
         if (distToPlayer > 0.85) {
           toPlayer.normalize();
-          // Eğer knockback yemiyorsa oyuncuya doğru yürü
           if (this.hitFlashTimer <= 0) {
             this.vel.x = toPlayer.x * moveSpeed;
             this.vel.z = toPlayer.z * moveSpeed;
+          }
+
+          // ------------------------------------------------------------------
+          // 2. GÜNCELLEME: ZOMBİ ENGEL AŞMA / PATHFINDING (1 BLOK ÖNÜNDE DUVAR VARSA ZIPLAMA)
+          // ------------------------------------------------------------------
+          const probeX = Math.floor(this.pos.x + toPlayer.x * 0.85);
+          const probeZ = Math.floor(this.pos.z + toPlayer.z * 0.85);
+          const footY = Math.floor(this.pos.y + 0.1);
+          const blockAheadFoot = getWorldBlock(probeX, footY, probeZ);
+          const blockAheadHead = getWorldBlock(probeX, footY + 1, probeZ);
+
+          const isSolidAhead = blockAheadFoot !== 0 && ITEMS[blockAheadFoot] && ITEMS[blockAheadFoot].solid;
+          const isHeadClear = blockAheadHead === 0 || !ITEMS[blockAheadHead] || !ITEMS[blockAheadHead].solid;
+
+          if (isSolidAhead && isHeadClear && this.onGround) {
+            this.vel.y = 8.4; // 1 blokluk tepeye / basamağa zıpla
+            this.onGround = false;
           }
         } else {
           if (this.hitFlashTimer <= 0) {
@@ -2662,24 +2945,29 @@
           }
         }
 
-        // Yerçekimi
-        this.vel.y -= 24.0 * dt;
+        // Su içinde yüzme veya normal yerçekimi
+        const inWater = isWaterId(getWorldBlock(Math.floor(this.pos.x), Math.floor(this.pos.y + 0.4), Math.floor(this.pos.z)));
+        if (inWater) {
+          this.vel.y = 3.6;
+        } else {
+          this.vel.y -= 24.0 * dt;
+        }
 
-        // X Ekseni Hareketi ve 1 Blokluk Engelden Otomatik Zıplama
+        // X Ekseni Hareketi ve Duvar Temasında Otomatik Zıplama
         const nextX = this.pos.x + this.vel.x * dt;
         if (!this.checkBlockCollision(nextX, this.pos.y, this.pos.z)) {
           this.pos.x = nextX;
         } else if (this.onGround) {
-          this.vel.y = 7.6;
+          this.vel.y = 8.4;
           this.onGround = false;
         }
 
-        // Z Ekseni Hareketi ve Otomatik Zıplama
+        // Z Ekseni Hareketi ve Duvar Temasında Otomatik Zıplama
         const nextZ = this.pos.z + this.vel.z * dt;
         if (!this.checkBlockCollision(this.pos.x, this.pos.y, nextZ)) {
           this.pos.z = nextZ;
         } else if (this.onGround) {
-          this.vel.y = 7.6;
+          this.vel.y = 8.4;
           this.onGround = false;
         }
 
@@ -2698,14 +2986,13 @@
 
         this.group.position.copy(this.pos);
 
-        // 2. MADDE: YÜRÜRKEN KOLLARIN VE BACAKLARIN ZIT YÖNLERDE SALLANMASI
+        // Kol ve Bacak Yürüme Animasyonu
         const speedMag = Math.hypot(this.vel.x, this.vel.z);
         if (speedMag > 0.2) {
           this.walkCycle += dt * 7.5;
           const swing = Math.sin(this.walkCycle) * 0.65;
           this.leftLegPivot.rotation.x  =  swing;
           this.rightLegPivot.rotation.x = -swing;
-          // Zombi kolları önde dururken birbirine zıt sallanır
           this.leftArmPivot.rotation.x  = -Math.PI / 2.2 - swing * 0.35;
           this.rightArmPivot.rotation.x = -Math.PI / 2.2 + swing * 0.35;
         } else {
@@ -2713,7 +3000,7 @@
           this.rightLegPivot.rotation.x = 0;
         }
 
-        // 2. MADDE: OYUNCUYA ÇOK YAKLAŞIRSA (1.6 BLOK) HASAR VER VE GERİYE SAVUR (KNOCKBACK)
+        // Oyuncuya Yaklaşınca Saldırı ve Knockback
         const fullDist = this.pos.distanceTo(player.pos);
         if (fullDist < 1.65 && this.attackCooldown <= 0 && !isCreative) {
           this.attackCooldown = 1.15;
@@ -2736,16 +3023,14 @@
       }
     }
 
-    // 1. MADDE: ZOMBİLERİ ÇİMEN BLOKLARININ ÜZERİNDE RASTGELE SPAWN ETME
     function trySpawnZombie() {
       if (zombies.length >= MAX_ZOMBIES) return;
 
       const angle = Math.random() * Math.PI * 2;
-      const dist = 14 + Math.random() * 12; // Oyuncudan 14..26 blok uzakta
+      const dist = 14 + Math.random() * 12;
       const sx = Math.floor(player.pos.x + Math.cos(angle) * dist);
       const sz = Math.floor(player.pos.z + Math.sin(angle) * dist);
 
-      // En üstteki bloğu bul; Çimen (id === 1) ise üstünde zombi oluştur
       for (let y = CHUNK_HEIGHT - 3; y >= WATER_LEVEL; y--) {
         const blockId = getWorldBlock(sx, y, sz);
         if (blockId !== 0) {
@@ -2769,7 +3054,6 @@
         const z = zombies[i];
         z.update(dt);
 
-        // Oyuncudan çok uzaklaşan veya boşluğa düşen zombileri temizle
         if (z.pos.y < -10 || z.pos.distanceTo(player.pos) > 52) {
           z.dispose();
           zombies.splice(i, 1);
@@ -2778,10 +3062,9 @@
       }
     }
 
-    // 3. MADDE: KAMERA RAYCASTER İLE ZOMBİYE SALDIRI MEKANİĞİ
     const combatRaycaster = new THREE.Raycaster();
     combatRaycaster.near = 0.1;
-    combatRaycaster.far = 4.3; // Kılıç vuruş mesafesi
+    combatRaycaster.far = 4.3;
 
     function tryAttackZombieWithRaycaster() {
       if (zombies.length === 0) return false;
@@ -2796,7 +3079,6 @@
         if (targetZombie) {
           const heldSlot = hotbar[selectedSlot];
           const heldItem = (heldSlot && heldSlot.count > 0) ? ITEMS[heldSlot.id] : null;
-          // Elmas Kılıç 7 hasar verir, kazmalar 4-5, çıplak el 2 hasar verir
           const dmg = (heldItem && heldItem.damage) ? heldItem.damage : 2;
           const died = targetZombie.takeDamage(dmg, player.pos);
           if (died) {
@@ -2865,7 +3147,6 @@
     }
     respawnPlayer();
 
-    // Başlangıçta 2 zombiyi hemen oluştur
     trySpawnZombie();
     trySpawnZombie();
 
@@ -3170,21 +3451,38 @@
         try { renderer.domElement.requestPointerLock(); } catch (err) {}
       }
 
+      const slot = hotbar[selectedSlot];
+      const heldItem = (slot && slot.id !== 0 && slot.count > 0) ? ITEMS[slot.id] : null;
+
       if (e.button === 0) {
         triggerSwing();
-        // Önce kameranın baktığı yerde zombi var mı kontrol et; varsa zombiye vur
+        // 1) Önce baktığımız yerde zombi var mı kontrol et
         const hitZombie = tryAttackZombieWithRaycaster();
-        if (!hitZombie) {
-          isLeftMouseDown = true;
-        }
-      } else if (e.button === 2) {
-        const slot = hotbar[selectedSlot];
-        if (!slot || slot.id === 0 || slot.count <= 0) return;
-        const item = ITEMS[slot.id];
+        if (hitZombie) return;
 
-        if (item.isFood) {
+        // 2) Oyuncu elinde Kılıç tutarken yerdeki TNT bloğuna sol tıklarsa TNT ateşlensin!
+        const hitBlock = voxelRaycast(6.0);
+        if (hitBlock && hitBlock.id === 28 && heldItem && heldItem.isSword) {
+          igniteTNTBlock(hitBlock.x, hitBlock.y, hitBlock.z);
+          return;
+        }
+
+        isLeftMouseDown = true;
+      } else if (e.button === 2) {
+        const hit = voxelRaycast(6.0);
+
+        // Yerdeki bir TNT bloğuna sağ tıklandığında TNT'yi ateşle (Ignite)!
+        if (hit && hit.id === 28) {
+          triggerSwing();
+          igniteTNTBlock(hit.x, hit.y, hit.z);
+          return;
+        }
+
+        if (!heldItem) return;
+
+        if (heldItem.isFood) {
           if (player.hunger < 20 || player.health < 20) {
-            player.hunger = Math.min(20, player.hunger + item.foodRestore);
+            player.hunger = Math.min(20, player.hunger + heldItem.foodRestore);
             player.health = Math.min(20, player.health + 2);
             if (!isCreative) {
               slot.count--;
@@ -3199,24 +3497,23 @@
           return;
         }
 
-        if (!item.isBlock) {
+        if (!heldItem.isBlock) {
           triggerSwing();
           return;
         }
-        const hit = voxelRaycast(6.0);
         if (!hit) return;
 
         const nx = hit.x + hit.normal.x;
         const ny = hit.y + hit.normal.y;
         const nz = hit.z + hit.normal.z;
 
-        if (!intersectsPlayerBox(nx, ny, nz) || !item.solid) {
+        if (!intersectsPlayerBox(nx, ny, nz) || !heldItem.solid) {
           const existing = getWorldBlock(nx, ny, nz);
           if (existing === 0 || isWaterId(existing) || existing === 16) {
-            setWorldBlock(nx, ny, nz, item.id);
+            setWorldBlock(nx, ny, nz, heldItem.id);
             triggerSwing();
-            if (item.isWater) sfx.playSplash();
-            else sfx.playHit(item.sound);
+            if (heldItem.isWater) sfx.playSplash();
+            else sfx.playHit(heldItem.sound);
 
             if (!isCreative) {
               slot.count--;
@@ -3260,7 +3557,6 @@
       player.headUnderwater = isWaterId(headBlock);
       document.getElementById('water-overlay').style.display = player.headUnderwater ? 'block' : 'none';
 
-      // Knockback sönümlemesi
       player.knockbackVel.multiplyScalar(Math.max(0, 1 - dt * 8));
 
       const speed = player.inWater && !isFlying ? baseSpeed * 0.62 : baseSpeed;
@@ -3329,7 +3625,6 @@
         }
       }
 
-      // Elde Tutma (View Bobbing) & Savurma (Swing) Animasyonu
       if (isSwinging) {
         swingPhase += dt * 3.8;
         if (swingPhase >= 1.0) {
@@ -3435,7 +3730,7 @@
         updatePlayerPhysics(dt, now);
         updateZombies(dt);
         updateMiningAndTarget(dt);
-        updateParticlesAndDrops(dt);
+        updateParticlesDropsAndTNT(dt);
         updateChunksAroundPlayer(player.pos.x, player.pos.z);
       }
 
